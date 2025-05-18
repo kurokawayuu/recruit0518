@@ -5,8 +5,8 @@
  * 新しい求人を投稿するためのページテンプレート
  */
 
-// 専用のヘッダーを読み込み
-include(get_stylesheet_directory() . '/agency-header.php');
+// 専用のヘッダーを読み込み 
+include(get_stylesheet_directory() . '/agency-header.php'); 
 
 // ログインチェック
 if (!is_user_logged_in()) {
@@ -49,7 +49,7 @@ if (isset($_POST['post_job']) && isset($_POST['job_nonce']) &&
     $job_id = wp_insert_post($job_data);
     
     if (!is_wp_error($job_id)) {
-        // タクソノミーの登録（スラッグを使用）
+        // タクソノミーの登録
         // 勤務地域の更新（複数の入力フィールドから）
         $job_location_slugs = array();
         if (!empty($_POST['region_value'])) $job_location_slugs[] = sanitize_text_field($_POST['region_value']);
@@ -176,7 +176,14 @@ if (isset($_POST['post_job']) && isset($_POST['job_nonce']) &&
             // 最初の画像をメインのサムネイルに設定
             if (!empty($thumbnail_ids)) {
                 set_post_thumbnail($job_id, $thumbnail_ids[0]);
+            } else {
+                // 画像がなければサムネイルを削除
+                delete_post_thumbnail($job_id);
             }
+        } else {
+            // 画像選択がない場合はメタデータとサムネイルを削除
+            delete_post_meta($job_id, 'job_thumbnail_ids');
+            delete_post_thumbnail($job_id);
         }
         
         // 仕事の一日の流れ（配列形式）
@@ -221,10 +228,9 @@ if (isset($_POST['post_job']) && isset($_POST['job_nonce']) &&
         $new_job_url = get_permalink($job_id);
     } else {
         // エラーメッセージ表示
-        if (is_wp_error($job_id)) {
-            $error = $job_id->get_error_message();
-        } else {
-            $error = '求人情報の投稿中に問題が発生しました。もう一度お試しください。';
+        $error = $job_id->get_error_message();
+        if (empty($error)) {
+            $error = '不明なエラーが発生しました。再度お試しください。';
         }
     }
 }
@@ -755,10 +761,7 @@ if (isset($_POST['post_job']) && isset($_POST['job_nonce']) &&
         });
         
         // ページ読み込み時の初期状態設定
-        $(document).ready(function() {
-            // ラジオボタンの状態に合わせて初期表示を設定
-            $('input[name="salary_form"]:checked').trigger('change');
-        });
+        $('input[name="salary_form"]:checked').trigger('change');
         
         // 地域（親）選択時の処理
         $('#region-select').on('change', function() {
@@ -1424,7 +1427,7 @@ if (isset($_POST['post_job']) && isset($_POST['job_nonce']) &&
         border: 1px solid #e0e0e0;
         border-radius: 4px;
         margin-bottom: 15px;
-        background-color: #fafafa;
+		background-color: #fafafa;
         position: relative;
     }
     
@@ -1477,7 +1480,7 @@ if (isset($_POST['post_job']) && isset($_POST['job_nonce']) &&
     </style>
 </div>
 
-<?php
-// 専用のフッターを読み込み
-include(get_stylesheet_directory() . '/agency-footer.php');
+<?php 
+// 専用のフッターを読み込み 
+include(get_stylesheet_directory() . '/agency-footer.php'); 
 ?>

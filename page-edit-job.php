@@ -5,8 +5,8 @@
  * 自分が投稿した求人を編集するためのページテンプレート
  */
 
-// 専用のヘッダーを読み込み
-include(get_stylesheet_directory() . '/agency-header.php');
+// 専用のヘッダーを読み込み 
+include(get_stylesheet_directory() . '/agency-header.php'); 
 
 // ログインチェック
 if (!is_user_logged_in()) {
@@ -1879,7 +1879,7 @@ if ($.fn.sortable) {
    </style>
 </div>
 
-<?php
-// 専用のフッターを読み込み
-include(get_stylesheet_directory() . '/agency-footer.php');
+<?php 
+// 専用のフッターを読み込み 
+include(get_stylesheet_directory() . '/agency-footer.php'); 
 ?>
