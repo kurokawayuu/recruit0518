@@ -1037,3 +1037,147 @@ jQuery(document).ready(function($) {
   goToSlide(0);
   startAutoplay();
 });
+
+/**
+ * 求人詳細ページのスライドショー用JavaScript
+ * 複数のサムネイル画像をスライドショー表示する機能を実装
+ */
+jQuery(document).ready(function($) {
+    // スライドショー用の変数
+    const slideshowContainer = $('.slideshow');
+    let currentSlide = 0;
+    let slideInterval;
+    let slideshowImages = [];
+    let isHovering = false;
+    
+    // 求人詳細ページにPHPで出力された全ての画像を取得
+    slideshowImages = $('.slideshow img').toArray();
+    
+    // 画像が複数ある場合のみスライドショー機能を設定
+    if (slideshowImages.length > 1) {
+        // 最初の画像以外を非表示にする
+        $(slideshowImages).hide();
+        $(slideshowImages[0]).show();
+        
+        // ナビゲーションドットを作成
+        createNavigationDots();
+        
+        // 前後の切り替えボタンを作成
+        createNavigationButtons();
+        
+        // 自動スライドショーを開始
+        startSlideshow();
+        
+        // ホバー時にスライドショーを一時停止
+        slideshowContainer.hover(
+            function() {
+                isHovering = true;
+                stopSlideshow();
+            },
+            function() {
+                isHovering = false;
+                startSlideshow();
+            }
+        );
+    }
+    
+    /**
+     * スライドショー用のナビゲーションドットを作成
+     */
+    function createNavigationDots() {
+        const dotsContainer = $('<div class="slideshow-dots"></div>');
+        
+        // 画像の数に基づいてドットを作成
+        for (let i = 0; i < slideshowImages.length; i++) {
+            const dot = $('<span class="slideshow-dot"></span>');
+            
+            // 最初のドットをアクティブに
+            if (i === 0) {
+                dot.addClass('active');
+            }
+            
+            // 各ドットにクリックイベントを追加
+            dot.on('click', function() {
+                goToSlide(i);
+            });
+            
+            dotsContainer.append(dot);
+        }
+        
+        // スライドショーの中にドットコンテナを追加（重要な変更点）
+        slideshowContainer.append(dotsContainer);
+    }
+    
+    /**
+     * 前へ・次へのナビゲーションボタンを作成
+     */
+    function createNavigationButtons() {
+        // 前へボタン
+        const prevButton = $('<button class="slideshow-nav prev" aria-label="前の画像へ">&lt;</button>');
+        prevButton.on('click', function() {
+            goToSlide(currentSlide - 1);
+        });
+        
+        // 次へボタン
+        const nextButton = $('<button class="slideshow-nav next" aria-label="次の画像へ">&gt;</button>');
+        nextButton.on('click', function() {
+            goToSlide(currentSlide + 1);
+        });
+        
+        // スライドショーコンテナにボタンを追加
+        slideshowContainer.append(prevButton, nextButton);
+    }
+    
+    /**
+     * 自動スライドショーを開始
+     */
+    function startSlideshow() {
+        // まだ実行中でなく、ホバー中でもない場合のみ開始
+        if (!slideInterval && !isHovering) {
+            slideInterval = setInterval(function() {
+                goToSlide(currentSlide + 1);
+            }, 5000); // 5秒ごとに画像を切り替え
+        }
+    }
+    
+    /**
+     * スライドショーを停止
+     */
+    function stopSlideshow() {
+        if (slideInterval) {
+            clearInterval(slideInterval);
+            slideInterval = null;
+        }
+    }
+    
+    /**
+     * 特定のスライドに移動
+     */
+    function goToSlide(slideIndex) {
+        // 最後のスライドを超えたら最初に戻る
+        if (slideIndex >= slideshowImages.length) {
+            slideIndex = 0;
+        }
+        // 最初のスライドより前に戻ったら最後のスライドに移動
+        else if (slideIndex < 0) {
+            slideIndex = slideshowImages.length - 1;
+        }
+        
+        // 現在表示されているスライドを非表示に
+        $(slideshowImages[currentSlide]).fadeOut(400);
+        
+        // 新しいスライドを表示
+        $(slideshowImages[slideIndex]).fadeIn(400);
+        
+        // アクティブドットを更新
+        $('.slideshow-dot').removeClass('active');
+        $('.slideshow-dot').eq(slideIndex).addClass('active');
+        
+        // 現在のスライドインデックスを更新
+        currentSlide = slideIndex;
+        
+        // 自動スライドショーを再開
+        stopSlideshow();
+        startSlideshow();
+    }
+});

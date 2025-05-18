@@ -318,7 +318,7 @@ $job_subtitle = $facility_name . 'の' . (!empty($job_position) ? $job_position[
 <div class="cont">
     <!-- ヘッダーセクション -->
     <div class="company-name"><?php echo esc_html($facility_company); ?></div>
-    <h1 class="job-title"><?php echo esc_html($job_subtitle); ?></h1>
+    <h1 class="job-title1"><?php echo esc_html($job_subtitle); ?></h1>
     <div class="job-subtitle"><?php echo esc_html($job_title); ?></div>
     
     <div class="facility-type">
@@ -334,27 +334,89 @@ $job_subtitle = $facility_name . 'の' . (!empty($job_position) ? $job_position[
     <!-- メイン画像と求人詳細を横並びに -->
     <div class="slideshow-container">
         <div class="slideshow">
-            <?php if (!empty($gallery_images)) : ?>
-                <?php foreach ($gallery_images as $image) : ?>
-                    <img src="<?php echo esc_url($image); ?>" alt="施設画像">
-                <?php endforeach; ?>
-            <?php else : ?>
-                <img src="<?php echo esc_url($thumbnail_url); ?>" alt="施設画像">
-            <?php endif; ?>
-        </div>
+    <?php
+    // 複数サムネイル画像を取得
+    $thumbnail_ids = get_post_meta($post_id, 'job_thumbnail_ids', true);
+    
+    // 画像がある場合は表示
+    if (!empty($thumbnail_ids) && is_array($thumbnail_ids)) {
+        foreach ($thumbnail_ids as $thumb_id) {
+            $image_url = wp_get_attachment_url($thumb_id);
+            if ($image_url) {
+                echo '<img src="' . esc_url($image_url) . '" alt="施設画像">';
+            }
+        }
+    } elseif (!empty($gallery_images)) {
+        // 互換性のために$gallery_imagesがある場合はそれを使用
+        foreach ($gallery_images as $image) {
+            echo '<img src="' . esc_url($image) . '" alt="施設画像">';
+        }
+    } else {
+        // サムネイル画像がなければデフォルト画像を表示
+        echo '<img src="' . esc_url($thumbnail_url) . '" alt="施設画像">';
+    }
+    ?>
+</div>
         
         <div class="job-details">
             <div class="job-position">
-                <span class="position"><?php echo !empty($job_position) ? esc_html($job_position[0]) : ''; ?></span>
-                <span class="employment-type"><?php echo !empty($job_type) ? esc_html($job_type[0]) : ''; ?></span>
-            </div>
+    <span class="position"><?php echo !empty($job_position) ? esc_html($job_position[0]) : ''; ?></span>
+    <?php
+    $employment_type = !empty($job_type) ? esc_html($job_type[0]) : '';
+    $type_class = 'other'; // デフォルトクラス
+    
+    // 雇用形態によってクラスを設定
+    if ($employment_type === '正社員') {
+        $type_class = 'full-time';
+    } else if ($employment_type === 'パート・アルバイト') {
+        $type_class = 'part-time';
+    }
+    ?>
+    <span class="employment-type <?php echo $type_class; ?>"><?php echo $employment_type; ?></span>
+</div>
             
             <div class="job-salary">
                 <div class="salary-label">住所</div>
-                <div class="salary-range"><?php echo esc_html($facility_address); ?></div>
+                <div class="salary-range">
+    <?php 
+    // 郵便番号と住所を分けて表示
+    $address = esc_html($facility_address);
+    // 郵便番号と住所部分を分割
+    $address_parts = preg_split('/(\〒\d{3}-\d{4})/', $address, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+    
+    if (count($address_parts) >= 2) {
+        // 郵便番号と住所部分が分かれている場合
+        echo $address_parts[0] . "<br>"; // 郵便番号
+        echo $address_parts[1]; // 住所部分
+    } else {
+        // 分割できなかった場合はそのまま表示
+        echo $address;
+    }
+    ?>
+</div>
                 <div class="salary-label">給与</div>
-                <div class="salary-range"><?php echo esc_html($salary_range); ?></div>
-            </div>
+<div class="salary-range">
+    <?php 
+    // 賃金形態を取得（MONTH/HOUR）
+    $salary_type = get_post_meta($post_id, 'salary_type', true);
+    
+    // 賃金形態の表示テキスト
+    $salary_type_text = '';
+    if ($salary_type == 'HOUR') {
+        $salary_type_text = '時給 ';
+    } else {
+        $salary_type_text = '月給 ';
+    }
+    
+    // 給与範囲を表示
+    echo esc_html($salary_type_text . $salary_range);
+    
+    // 「円」を追加（ただし既に「円」が含まれている場合は追加しない）
+    if (strpos($salary_range, '円') === false) {
+        echo '円';
+    }
+    ?>
+</div>
             
             <!-- ボタン -->
             <div class="button-group">
@@ -363,7 +425,7 @@ $job_subtitle = $facility_name . 'の' . (!empty($job_position) ? $job_position[
             </div>
         </div>
     </div>
-
+ </div>
     <!-- 情報タブヘッダー -->
     <div class="info-tabs">情報目次</div>
     
@@ -932,12 +994,12 @@ jQuery(document).ready(function($) {
     margin-bottom: 5px;
     text-align: right;
 }
-.job-title {
+.job-title1 {
     font-size: 22px;
     font-weight: bold;
     margin-bottom: 5px;
 }
-.job-subtitle {
+.job-subtitle1 {
     font-size: 16px;
     margin-bottom: 15px;
 }
@@ -959,13 +1021,14 @@ jQuery(document).ready(function($) {
 .slideshow-container {
     position: relative;
     display: flex;
-    margin-bottom: 0;
+    margin-bottom: 30px;
     background-color: #fff;
     padding: 15px;
+    min-height: 450px; /* 十分な高さを確保 */
 }
 .slideshow {
     width: 65%;
-    height: 200px;
+    height: 420px; /* 高さを増やす */
     overflow: hidden;
     position: relative;
 }
@@ -978,9 +1041,13 @@ jQuery(document).ready(function($) {
     width: 35%;
     padding: 0 20px;
     margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: 420px; /* slideshow と同じ高さに */
 }
 .job-position {
-    margin-bottom: 15px;
+    flex: 0 0 auto; /* サイズ固定 */
+    margin-bottom: 30px;
 }
 .job-position span {
     display: inline-block;
@@ -998,22 +1065,36 @@ jQuery(document).ready(function($) {
     font-size: 14px;
 }
 .job-salary {
-    margin-bottom: 20px;
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 30px;
+    min-height: 100px;
 }
 .salary-label {
     font-size: 14px;
     color: #777;
     margin-bottom: 5px;
+    margin-top: 15px;
+    display: block !important;
+}
+.salary-label:first-child {
+    margin-top: 0;
 }
 .salary-range {
     font-size: 16px;
     font-weight: bold;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    display: block !important;
+    word-break: break-word;
+    line-height: 1.4;
 }
 .button-group {
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    margin-top: auto;
 }
 .keep-button, .contact-button {
     padding: 12px;
@@ -1113,6 +1194,16 @@ jQuery(document).ready(function($) {
     padding: 15px;
     border-radius: 5px 5px 0 0;
     margin: -20px -20px 15px -20px; /* ボックスにくっつけるための調整 */
+    background-image: none !important;
+    box-shadow: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    padding-left: 15px !important;
+}
+.section-title:after {
+    display: none !important;
+    content: none !important;
 }
 /* 事業所情報の見出し背景をグレーに変更 */
 #facility-info .section-title {
@@ -1127,39 +1218,43 @@ jQuery(document).ready(function($) {
 }
 .job-info-table th, .job-info-table td,
 .facility-info-table th, .facility-info-table td {
-    padding: 12px;
-    border-bottom: 1px solid #eee;
+    padding: 12px !important;
+    border-bottom: 1px solid #eee !important;
     vertical-align: top;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
 }
 .job-info-table th, .facility-info-table th {
     width: 25%;
     text-align: left;
     font-weight: normal;
     color: #777;
-    background-color: #fff; /* 全ての背景を白に変更 */
+    background-color: #fff !important; /* 全ての背景を白に変更 */
+}
+/* テーブルの交互の背景色を打ち消し */
+table tr:nth-of-type(2n+1) {
+    background-color: #fff !important; /* 全ての行を白背景に */
 }
 
-/* 求人特徴のスタイル - 新規追加 */
+/* 求人特徴のスタイル */
 .feature-section {
     background-color: #fff;
     padding: 15px;
     margin: 20px 0;
     border-radius: 8px;
 }
-
 .feature-title {
     font-size: 18px;
     font-weight: bold;
     margin-bottom: 15px;
     color: #333;
 }
-
 .tag-container {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
 }
-
 .job-tag {
     background-color: #fff;
     border: 1px solid #ffb74d;
@@ -1169,7 +1264,7 @@ jQuery(document).ready(function($) {
     font-size: 14px;
 }
 
-/* 職場環境のスタイル - 新規追加 */
+/* 職場環境のスタイル */
 .workplace-environment {
     background-color: #fff;
     border-radius: 8px;
@@ -1177,7 +1272,6 @@ jQuery(document).ready(function($) {
     margin-bottom: 20px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-
 .environment-title {
     font-size: 20px;
     font-weight: bold;
@@ -1187,7 +1281,6 @@ jQuery(document).ready(function($) {
     border-radius: 8px 8px 0 0;
     text-align: center;
 }
-
 .section-subtitle {
     font-size: 18px;
     font-weight: bold;
@@ -1195,7 +1288,6 @@ jQuery(document).ready(function($) {
     display: flex;
     align-items: center;
 }
-
 .orange-dot {
     display: inline-block;
     width: 12px;
@@ -1205,17 +1297,15 @@ jQuery(document).ready(function($) {
     margin-right: 8px;
 }
 
-/* タイムラインのスタイル - 修正版 */
+/* タイムラインのスタイル */
 .daily-schedule {
     margin: 20px 0;
 }
-
 .timeline-row {
     display: flex;
     margin-bottom: 15px;
     align-items: flex-start;
 }
-
 /* オレンジ色の時間表示（正方形） */
 .timeline-time-orange {
     width: 55px;
@@ -1231,7 +1321,6 @@ jQuery(document).ready(function($) {
     margin-right: 15px;
     flex-shrink: 0;
 }
-
 /* 白枠の時間表示（横長） */
 .timeline-time-white {
     min-width: 85px;
@@ -1245,39 +1334,34 @@ jQuery(document).ready(function($) {
     border: 1px solid #ffa726;
     flex-shrink: 0;
 }
-
 .timeline-content {
     flex-grow: 1;
     padding-top: 3px;
     text-align: left;
 }
-
 .timeline-title {
     font-weight: bold;
     margin-bottom: 5px;
     text-align: left;
 }
-
 .timeline-description {
     color: #666;
     font-size: 14px;
     text-align: left;
 }
 
-/* スタッフの声のスタイル - 修正版 */
+/* スタッフの声のスタイル */
 .staff-voice {
     background-color: #fff;
     padding: 15px 0;
     margin: 10px 0;
     border-bottom: 1px solid #eee;
 }
-
 .staff-info {
     display: flex;
     align-items: center;
     margin-bottom: 10px;
 }
-
 .staff-photo {
     width: 70px;
     height: 70px;
@@ -1285,7 +1369,6 @@ jQuery(document).ready(function($) {
     flex-shrink: 0;
     overflow: hidden;
 }
-
 .staff-img {
     width: 100%;
     height: 100%;
@@ -1293,24 +1376,20 @@ jQuery(document).ready(function($) {
     display: block;
     border-radius: 0; /* 四角形のサムネイル */
 }
-
 .staff-details {
     flex-grow: 1;
 }
-
 .staff-name {
     font-size: 18px;
     font-weight: bold;
     margin-bottom: 5px;
     text-align: left;
 }
-
 .staff-position {
     font-size: 14px;
     color: #777;
     text-align: left;
 }
-
 .staff-comment {
     font-size: 15px;
     line-height: 1.6;
@@ -1442,19 +1521,42 @@ jQuery(document).ready(function($) {
     display: none !important;
 }
 
+/* 給与備考欄のスタイル */
+.salary-remarks {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dotted #eee;
+    color: #666;
+    font-size: 14px;
+}
+
 /* レスポンシブデザイン対応 */
 @media (max-width: 768px) {
     .slideshow-container {
         flex-direction: column;
+        min-height: auto;
     }
     .slideshow, .job-details {
         width: 100%;
+        height: auto;
     }
     .slideshow {
         margin-bottom: 20px;
+        height: 200px;
     }
     .job-details {
-        padding: 0;
+        padding: 15px 0;
+        min-height: 350px;
+    }
+    .job-position {
+        margin-bottom: 20px;
+    }
+    .job-salary {
+        margin-bottom: 20px;
+        min-height: 130px;
+    }
+    .button-group {
+        margin-top: 20px;
     }
     .content-area {
         flex-direction: column;
@@ -1483,59 +1585,183 @@ jQuery(document).ready(function($) {
         margin-right: 0;
     }
 }
-
-/* .section-title:after を削除 */
-.section-title:after {
-    display: none !important;
-    content: none !important;
+	
+/* 雇用形態ごとの色分け */
+.employment-type.full-time {
+    background-color: #C5E5FF;
+    color: #5599FF;
 }
 
-/* テーブルの交互の背景色を打ち消し */
-table tr:nth-of-type(2n+1) {
-    background-color: #fff !important; /* 全ての行を白背景に */
+.employment-type.part-time {
+    background-color: #FFD5F9;
+    color: #F58284;
 }
 
-/* テーブルのボーダーを打ち消し（下線以外） */
-table:not(.has-border-color) th,
-table:not(.has-border-color) td {
-    border: none !important;
-    border-bottom: 1px solid #eee !important; /* 下線のみ残す */
+.employment-type.other {
+    background-color: #D5FFEC;
+    color: #0FB96A;
+}
+	
+/**
+ * 求人詳細ページのスライドショー用CSSスタイル (修正版)
+ */
+
+/* スライドショーコンテナのスタイル */
+.slideshow {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-/* その他のCocoonテーマスタイルを打ち消し */
-.section-title {
-    /* Cocoonテーマの装飾をリセット */
-    background-image: none !important;
-    box-shadow: none !important;
-    border-left: none !important;
-    border-right: none !important;
-    border-top: none !important;
-    padding-left: 10px !important; /* パディングをシンプルに */
+/* 画像のスタイル */
+.slideshow img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
-/* テーブル内のセル余白を調整 */
-.job-info-table th, 
-.job-info-table td,
-.facility-info-table th, 
-.facility-info-table td {
-    padding: 12px !important;
+/* ナビゲーションドットのコンテナ - 修正 */
+.slideshow-dots {
+    position: absolute;
+    bottom: 15px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    z-index: 10;
+    /* 画像幅の中に収まるように調整 */
+    margin: 0 auto;
+    width: auto;
+    max-width: 100%;
 }
 
-/* 給与備考欄のスタイル */
-.salary-remarks {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dotted #eee;
-  color: #666;
-  font-size: 14px;
+/* ドットのスタイル */
+.slideshow-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin: 0 5px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-.contact-button {
-    background-color: #26b7a0;
-    color: #fff;
+/* アクティブなドットのスタイル */
+.slideshow-dot.active {
+    background-color: #fff;
+    transform: scale(1.2);
+}
+
+/* ナビゲーションボタンの共通スタイル */
+.slideshow-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    background-color: rgba(0, 0, 0, 0.3);
+    color: white;
     border: none;
+    border-radius: 50%;
+    font-size: 24px;
+    line-height: 1;
+    text-align: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1; /* 常に表示 */
 }
-/* ボタンのテキストは「応募画面へ」に変更 */
+
+/* 前へボタンの位置 */
+.slideshow-nav.prev {
+    left: 10px;
+}
+
+/* 次へボタンの位置 */
+.slideshow-nav.next {
+    right: 10px;
+}
+
+/* ホバー時のナビゲーションボタンのスタイル */
+.slideshow-nav:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+    .slideshow-nav {
+        width: 30px;
+        height: 30px;
+        font-size: 18px;
+    }
+    
+    .slideshow-dot {
+        width: 8px;
+        height: 8px;
+        margin: 0 3px;
+    }
+}
+
+/* ホバー時のナビゲーションボタンの表示（不要なので削除） */
+/* .slideshow:hover .slideshow-nav {
+    opacity: 1;
+} */
+
+/* 前へボタンの位置 */
+.slideshow-nav.prev {
+    left: 10px;
+}
+
+/* 次へボタンの位置 */
+.slideshow-nav.next {
+    right: 10px;
+}
+
+/* ホバー時のナビゲーションボタンのスタイル */
+.slideshow-nav:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+    .slideshow-nav {
+        width: 30px;
+        height: 30px;
+        font-size: 18px;
+    }
+    
+    .slideshow-dot {
+        width: 8px;
+        height: 8px;
+        margin: 0 3px;
+    }
+}
+/* ナビゲーションボタンの共通スタイル */
+.slideshow-nav {
+    opacity: 1; /* 元の値は0でホバー時のみ表示、常時表示するために1に変更 */
+}
+
+/* ホバー時のナビゲーションボタンの表示（不要なので削除） */
+/* .slideshow:hover .slideshow-nav {
+    opacity: 1;
+} */
+
+/* ナビゲーションドットのコンテナ */
+.slideshow-dots {
+    width: 100%; /* 画像の幅全体を使用するように指定 */
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+    .slideshow-nav {
+        /* opacity: 1; の記述は不要になったので削除 */
+    }
+}
 </style>
 <?php 
 // フッターからデフォルトのウィジェットを削除
