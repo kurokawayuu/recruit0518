@@ -17,6 +17,9 @@ if (!is_user_logged_in()) {
 
 // メディアアップローダーのスクリプトを読み込む
 wp_enqueue_media();
+wp_enqueue_script('jquery');
+wp_enqueue_script('jquery-ui-core');
+wp_enqueue_script('jquery-ui-sortable');
 
 // 現在のユーザー情報を取得
 $current_user = wp_get_current_user();
@@ -177,24 +180,24 @@ if (isset($_POST['update_job']) && isset($_POST['job_nonce']) &&
         update_post_meta($job_id, 'salary_range', $salary_range);
         
        // サムネイル画像の処理
-if (isset($_POST['thumbnail_ids']) && is_array($_POST['thumbnail_ids'])) {
-    $thumbnail_ids = array_map('intval', $_POST['thumbnail_ids']);
-    
-    // 複数画像IDをメタデータとして保存
-    update_post_meta($job_id, 'job_thumbnail_ids', $thumbnail_ids);
-    
-    // 最初の画像をメインのサムネイルに設定
-    if (!empty($thumbnail_ids)) {
-        set_post_thumbnail($job_id, $thumbnail_ids[0]);
-    } else {
-        // 画像がなければサムネイルを削除
-        delete_post_thumbnail($job_id);
-    }
-} else {
-    // 画像選択がない場合はメタデータとサムネイルを削除
-    delete_post_meta($job_id, 'job_thumbnail_ids');
-    delete_post_thumbnail($job_id);
-}
+        if (isset($_POST['thumbnail_ids']) && is_array($_POST['thumbnail_ids'])) {
+            $thumbnail_ids = array_map('intval', $_POST['thumbnail_ids']);
+            
+            // 複数画像IDをメタデータとして保存
+            update_post_meta($job_id, 'job_thumbnail_ids', $thumbnail_ids);
+            
+            // 最初の画像をメインのサムネイルに設定
+            if (!empty($thumbnail_ids)) {
+                set_post_thumbnail($job_id, $thumbnail_ids[0]);
+            } else {
+                // 画像がなければサムネイルを削除
+                delete_post_thumbnail($job_id);
+            }
+        } else {
+            // 画像選択がない場合はメタデータとサムネイルを削除
+            delete_post_meta($job_id, 'job_thumbnail_ids');
+            delete_post_thumbnail($job_id);
+        }
         
         // 仕事の一日の流れ（配列形式）
         if (isset($_POST['daily_schedule_time']) && is_array($_POST['daily_schedule_time'])) {
@@ -366,37 +369,39 @@ $thumbnail_id = get_post_thumbnail_id($job_id);
             </div>
             
             <div class="form-row">
-    <label>サムネイル画像 <span class="required">*</span></label>
-    <div id="thumbnails-container">
-        <?php 
-        // 現在の画像IDリストを取得
-        $thumbnail_ids = get_post_meta($job_id, 'job_thumbnail_ids', true);
-        if (empty($thumbnail_ids)) {
-            $thumbnail_ids = array();
-            // 従来のサムネイルIDがある場合は追加
-            $old_thumbnail_id = get_post_thumbnail_id($job_id);
-            if ($old_thumbnail_id) {
-                $thumbnail_ids[] = $old_thumbnail_id;
-            }
-        }
-        
-        // 画像プレビューの表示
-        if (!empty($thumbnail_ids)) {
-            foreach ($thumbnail_ids as $thumb_id) {
-                if ($image_url = wp_get_attachment_url($thumb_id)) {
-                    echo '<div class="thumbnail-item">';
-                    echo '<div class="thumbnail-preview"><img src="' . esc_url($image_url) . '" alt="サムネイル画像"></div>';
-                    echo '<input type="hidden" name="thumbnail_ids[]" value="' . esc_attr($thumb_id) . '">';
-                    echo '<button type="button" class="remove-thumbnail-btn">削除</button>';
-                    echo '</div>';
-                }
-            }
-        }
-        ?>
-    </div>
-    <button type="button" class="btn-media-upload" id="upload_thumbnails">画像を追加</button>
-    <p class="form-hint">メイン画像は最初の画像が使用されます。画像の順番はドラッグ&ドロップで変更できます。</p>
-</div>
+                <label>サムネイル画像 <span class="required">*</span></label>
+                <div id="thumbnails-container">
+                    <?php 
+                    // 現在の画像IDリストを取得
+                    $thumbnail_ids = get_post_meta($job_id, 'job_thumbnail_ids', true);
+                    if (empty($thumbnail_ids)) {
+                        $thumbnail_ids = array();
+                        // 従来のサムネイルIDがある場合は追加
+                        $old_thumbnail_id = get_post_thumbnail_id($job_id);
+                        if ($old_thumbnail_id) {
+                            $thumbnail_ids[] = $old_thumbnail_id;
+                        }
+                    }
+                    
+                    // 画像プレビューの表示
+                    if (!empty($thumbnail_ids)) {
+                        foreach ($thumbnail_ids as $thumb_id) {
+                            if ($image_url = wp_get_attachment_url($thumb_id)) {
+                                echo '<div class="thumbnail-item">';
+                                echo '<div class="thumbnail-preview"><img src="' . esc_url($image_url) . '" alt="サムネイル画像"></div>';
+                                echo '<input type="hidden" name="thumbnail_ids[]" value="' . esc_attr($thumb_id) . '">';
+                                echo '<button type="button" class="remove-thumbnail-btn">削除</button>';
+                                echo '</div>';
+                            }
+                        }
+                    }
+                    ?>
+                </div>
+                <div class="button-container" style="margin-top: 10px; clear: both;">
+                    <button type="button" class="btn-media-upload" id="upload_thumbnails">画像を追加</button>
+                </div>
+                <p class="form-hint">メイン画像は最初の画像が使用されます。画像の順番はドラッグ&ドロップで変更できます。</p>
+            </div>
             
             <div class="form-row">
                 <label for="job_content_title">本文タイトル <span class="required">*</span></label>
@@ -712,7 +717,9 @@ $thumbnail_id = get_post_thumbnail_id($job_id);
                     }
                     ?>
                 </div>
-                <button type="button" id="add-schedule-item" class="btn-add-item">時間枠を追加</button>
+                <div class="button-container" style="margin-top: 10px; clear: both;">
+                    <button type="button" id="add-schedule-item" class="btn-add-item">時間枠を追加</button>
+                </div>
             </div>
             
             <div class="form-row">
@@ -735,12 +742,14 @@ $thumbnail_id = get_post_thumbnail_id($job_id);
                                         <?php endif; ?>
                                     </div>
                                     <input type="hidden" name="staff_voice_image[]" value="<?php echo esc_attr($item['image_id']); ?>">
-                                    <button type="button" class="upload-voice-image">画像を選択</button>
-                                    <?php if (!empty($image_url)): ?>
-                                    <button type="button" class="remove-voice-image">削除</button>
-                                    <?php else: ?>
-                                    <button type="button" class="remove-voice-image" style="display:none;">削除</button>
-                                    <?php endif; ?>
+                                    <div class="button-container" style="margin-top: 5px;">
+                                        <button type="button" class="upload-voice-image">画像を選択</button>
+                                        <?php if (!empty($image_url)): ?>
+                                        <button type="button" class="remove-voice-image">削除</button>
+                                        <?php else: ?>
+                                        <button type="button" class="remove-voice-image" style="display:none;">削除</button>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                                 <div class="voice-role">
                                     <label>職種</label>
@@ -770,8 +779,10 @@ $thumbnail_id = get_post_thumbnail_id($job_id);
                                 <label>サムネイル</label>
                                 <div class="voice-image-preview"></div>
                                 <input type="hidden" name="staff_voice_image[]" value="">
-                                <button type="button" class="upload-voice-image">画像を選択</button>
-                                <button type="button" class="remove-voice-image" style="display:none;">削除</button>
+                                <div class="button-container" style="margin-top: 5px;">
+                                    <button type="button" class="upload-voice-image">画像を選択</button>
+                                    <button type="button" class="remove-voice-image" style="display:none;">削除</button>
+                                </div>
                             </div>
                             <div class="voice-role">
                                 <label>職種</label>
@@ -791,7 +802,9 @@ $thumbnail_id = get_post_thumbnail_id($job_id);
                     }
                     ?>
                 </div>
-                <button type="button" id="add-voice-item" class="btn-add-item">職員の声を追加</button>
+                <div class="button-container" style="margin-top: 10px; clear: both;">
+                    <button type="button" id="add-voice-item" class="btn-add-item">職員の声を追加</button>
+                </div>
             </div>
         </div>
         
@@ -926,485 +939,487 @@ $thumbnail_id = get_post_thumbnail_id($job_id);
     
     <!-- JavaScript -->
     <script>
-jQuery(document).ready(function($) {
-    // 複数サムネイル画像用のメディアアップローダー
-$('#upload_thumbnails').click(function(e) {
-    e.preventDefault();
-    
-    var custom_uploader = wp.media({
-        title: '求人サムネイル画像を選択',
-        button: {
-            text: '画像を選択'
-        },
-        multiple: true // 複数選択可能に変更
-    });
-    
-    custom_uploader.on('select', function() {
-        var attachments = custom_uploader.state().get('selection').toJSON();
+    jQuery(document).ready(function($) {
+        console.log('Form JavaScript initialized'); // デバッグ用
         
-        // 選択された各画像を処理
-        $.each(attachments, function(index, attachment) {
-            var $thumbnailItem = $('<div class="thumbnail-item"></div>');
-            $thumbnailItem.append('<div class="thumbnail-preview"><img src="' + attachment.url + '" alt="サムネイル画像"></div>');
-            $thumbnailItem.append('<input type="hidden" name="thumbnail_ids[]" value="' + attachment.id + '">');
-            $thumbnailItem.append('<button type="button" class="remove-thumbnail-btn">削除</button>');
+        // 複数サムネイル画像用のメディアアップローダー
+        $('#upload_thumbnails').on('click', function(e) {
+            e.preventDefault();
             
-            // サムネイルコンテナに追加
-            $('#thumbnails-container').append($thumbnailItem);
+            var custom_uploader = wp.media({
+                title: '求人サムネイル画像を選択',
+                button: {
+                    text: '画像を選択'
+                },
+                multiple: true
+            });
+            
+            custom_uploader.on('select', function() {
+                var attachments = custom_uploader.state().get('selection').toJSON();
+                
+                // 選択された各画像を処理
+                $.each(attachments, function(index, attachment) {
+                    var $thumbnailItem = $('<div class="thumbnail-item"></div>');
+                    $thumbnailItem.append('<div class="thumbnail-preview"><img src="' + attachment.url + '" alt="サムネイル画像"></div>');
+                    $thumbnailItem.append('<input type="hidden" name="thumbnail_ids[]" value="' + attachment.id + '">');
+                    $thumbnailItem.append('<button type="button" class="remove-thumbnail-btn">削除</button>');
+                    
+                    // サムネイルコンテナに追加
+                    $('#thumbnails-container').append($thumbnailItem);
+                });
+            });
+            
+            custom_uploader.open();
         });
-    });
-    
-    custom_uploader.open();
-});
-
-// サムネイルの削除処理
-$(document).on('click', '.remove-thumbnail-btn', function() {
-    $(this).closest('.thumbnail-item').remove();
-});
-
-// サムネイルの並び替え機能（jQuery UIが必要）
-if ($.fn.sortable) {
-    $('#thumbnails-container').sortable({
-        placeholder: 'ui-state-highlight',
-        update: function(event, ui) {
-            // 並び替え後の処理（必要であれば）
-        }
-    });
-    $('#thumbnails-container').disableSelection();
-}
-    
-    // 給与フィールドの表示切替
-    $('input[name="salary_form"]').on('change', function() {
-        // すべての給与フィールドを非表示
-        $('.salary-field').hide();
         
-        // 選択された給与形態に応じたフィールドを表示
-        if ($(this).val() === 'fixed') {
-            $('#fixed-salary-field').show();
-            $('#fixed_salary').prop('required', true);
-            $('#salary_min, #salary_max').prop('required', false);
-        } else {
-            $('#range-salary-fields').show();
-            $('#fixed_salary').prop('required', false);
-            $('#salary_min, #salary_max').prop('required', true);
-        }
-    });
-    
-    // ページ読み込み時の初期状態設定
-    $('input[name="salary_form"]:checked').trigger('change');
-    
-    // 初期状態で選択されていない場合は範囲給を選択
-    if (!$('input[name="salary_form"]:checked').length) {
-        $('input[name="salary_form"][value="range"]').prop('checked', true).trigger('change');
-    }
-    
-    // 画像削除ボタン（サムネイル用）
-    $(document).on('click', '#remove_thumbnail', function(e) {
-        e.preventDefault();
-        $('.thumbnail-preview').empty();
-        $('#thumbnail_id').val('');
-        $(this).remove();
-    });
-    
-    // 勤務地域の段階的な選択のためのJavaScript
-    // 初期値用の変数
-    var initialRegionId = null;
-    var initialPrefectureId = null;
-    var initialCityId = null;
-    var initialRegionSlug = '';
-    var initialPrefectureSlug = '';
-    var initialCitySlug = '';
-    var initialRegionName = '';
-    var initialPrefectureName = '';
-    var initialCityName = '';
-    
-    // 初期値の設定（編集時）
-    <?php
-    // 現在選択されている地域情報を取得
-    if (!empty($current_job_location)) {
-        // 各レベルのタームとスラッグを取得
-        $region_term = null;
-        $prefecture_term = null;
-        $city_term = null;
+        // サムネイルの削除処理
+        $(document).on('click', '.remove-thumbnail-btn', function() {
+            $(this).closest('.thumbnail-item').remove();
+        });
         
-        // 全てのタームを調べて階層構造を判断
-        foreach ($current_job_location as $slug) {
-            $term = get_term_by('slug', $slug, 'job_location');
-            if (!$term) continue;
+        // サムネイルの並び替え機能（jQuery UIが必要）
+        if ($.fn.sortable) {
+            $('#thumbnails-container').sortable({
+                placeholder: 'ui-state-highlight',
+                update: function(event, ui) {
+                    // 並び替え後の処理（必要であれば）
+                }
+            });
+            $('#thumbnails-container').disableSelection();
+        }
+        
+        // 給与フィールドの表示切替
+        $('input[name="salary_form"]').on('change', function() {
+            // すべての給与フィールドを非表示
+            $('.salary-field').hide();
             
-            $ancestors = get_ancestors($term->term_id, 'job_location', 'taxonomy');
-            $ancestor_count = count($ancestors);
+            // 選択された給与形態に応じたフィールドを表示
+            if ($(this).val() === 'fixed') {
+                $('#fixed-salary-field').show();
+                $('#fixed_salary').prop('required', true);
+                $('#salary_min, #salary_max').prop('required', false);
+            } else {
+                $('#range-salary-fields').show();
+                $('#fixed_salary').prop('required', false);
+                $('#salary_min, #salary_max').prop('required', true);
+            }
+        });
+        
+        // 初期表示を設定
+        $('input[name="salary_form"]:checked').trigger('change');
+        
+        // 勤務地域の段階的な選択のためのJavaScriptコード - 省略
+        // ...
+        
+        // 特徴タグのアコーディオン機能
+        $('.feature-accordion-header').on('click', function() {
+            var $accordion = $(this).parent();
+            var $content = $accordion.find('.feature-accordion-content');
+            var $icon = $(this).find('.accordion-icon');
             
-            // 階層レベルによって適切な変数に格納
-            if ($ancestor_count == 0) {
-                // 親（地域）
-                $region_term = $term;
-            } else if ($ancestor_count == 1) {
-                // 子（都道府県）
-                $prefecture_term = $term;
-            } else if ($ancestor_count == 2) {
-                // 孫（市区町村）
-                $city_term = $term;
+            if ($content.is(':visible')) {
+                $content.slideUp();
+                $icon.text('+');
+            } else {
+                $content.slideDown();
+                $icon.text('-');
+            }
+        });
+        
+        // 既にチェックされている特徴タグがある場合、そのアコーディオンを開く
+        $('.feature-accordion').each(function() {
+            var $accordion = $(this);
+            var hasChecked = $accordion.find('input:checked').length > 0;
+            
+            if (hasChecked) {
+                var $content = $accordion.find('.feature-accordion-content');
+                var $icon = $accordion.find('.accordion-icon');
+                
+                $content.show();
+                $icon.text('-');
+            }
+        });
+        
+        // 「仕事の一日の流れ」の項目を追加
+        $('#add-schedule-item').on('click', function(e) {
+            e.preventDefault();
+            console.log('Add schedule item clicked'); // デバッグ用
+            
+            var newItem = $('.daily-schedule-item:first').clone();
+            newItem.find('input, textarea').val('');
+            newItem.find('.remove-schedule-item').show();
+            $('#daily-schedule-container').append(newItem);
+        });
+        
+        // 「仕事の一日の流れ」の項目を削除
+        $(document).on('click', '.remove-schedule-item', function(e) {
+            e.preventDefault();
+            $(this).closest('.daily-schedule-item').remove();
+        });
+        
+        // 「職員の声」の項目を追加
+        $('#add-voice-item').on('click', function(e) {
+            e.preventDefault();
+            console.log('Add voice item clicked'); // デバッグ用
+            
+            var newItem = $('.staff-voice-item:first').clone();
+            newItem.find('input, textarea').val('');
+            newItem.find('.voice-image-preview').empty();
+            newItem.find('.remove-voice-item').show();
+            $('#staff-voice-container').append(newItem);
+        });
+        
+        // 「職員の声」の項目を削除
+        $(document).on('click', '.remove-voice-item', function(e) {
+            e.preventDefault();
+            $(this).closest('.staff-voice-item').remove();
+        });
+        
+        // 「職員の声」の画像アップローダー
+        $(document).on('click', '.upload-voice-image', function(e) {
+            e.preventDefault();
+            console.log('Upload voice image clicked'); // デバッグ用
+            
+            var button = $(this);
+            var imageContainer = button.closest('.voice-image');
+            var previewContainer = imageContainer.find('.voice-image-preview');
+            var inputField = imageContainer.find('input[name^="staff_voice_image"]');
+            
+            var custom_uploader = wp.media({
+                title: '職員の声の画像を選択',
+                button: {
+                    text: '画像を選択'
+                },
+                multiple: false
+            });
+            
+            custom_uploader.on('select', function() {
+                var attachment = custom_uploader.state().get('selection').first().toJSON();
+                previewContainer.html('<img src="' + attachment.url + '" alt="スタッフ画像">');
+                inputField.val(attachment.id);
+                
+                // 削除ボタンを表示
+                imageContainer.find('.remove-voice-image').show();
+            });
+            
+            custom_uploader.open();
+        });
+        
+        // 「職員の声」の画像削除
+        $(document).on('click', '.remove-voice-image', function(e) {
+            e.preventDefault();
+            var imageContainer = $(this).closest('.voice-image');
+            imageContainer.find('.voice-image-preview').empty();
+            imageContainer.find('input[name^="staff_voice_image"]').val('');
+            $(this).hide();
+        });
+        
+        // 勤務地域の段階的な選択のためのJavaScript
+        // 初期値用の変数
+        var initialRegionId = null;
+        var initialPrefectureId = null;
+        var initialCityId = null;
+        var initialRegionSlug = '';
+        var initialPrefectureSlug = '';
+        var initialCitySlug = '';
+        var initialRegionName = '';
+        var initialPrefectureName = '';
+        var initialCityName = '';
+        
+        // 初期値の設定（編集時）
+        <?php
+        // 現在選択されている地域情報を取得
+        if (!empty($current_job_location)) {
+            // 各レベルのタームとスラッグを取得
+            $region_term = null;
+            $prefecture_term = null;
+            $city_term = null;
+            
+            // 全てのタームを調べて階層構造を判断
+            foreach ($current_job_location as $slug) {
+                $term = get_term_by('slug', $slug, 'job_location');
+                if (!$term) continue;
+                
+                $ancestors = get_ancestors($term->term_id, 'job_location', 'taxonomy');
+                $ancestor_count = count($ancestors);
+                
+                // 階層レベルによって適切な変数に格納
+                if ($ancestor_count == 0) {
+                    // 親（地域）
+                    $region_term = $term;
+                } else if ($ancestor_count == 1) {
+                    // 子（都道府県）
+                    $prefecture_term = $term;
+                } else if ($ancestor_count == 2) {
+                    // 孫（市区町村）
+                    $city_term = $term;
+                }
+            }
+            
+            // 初期値をJavaScriptに設定
+            if ($region_term) {
+                echo "initialRegionId = {$region_term->term_id};\n";
+                echo "initialRegionSlug = '{$region_term->slug}';\n";
+                echo "initialRegionName = '{$region_term->name}';\n";
+                echo "$('#selected-region-text').text('{$region_term->name}');\n";
+            }
+            
+            if ($prefecture_term) {
+                echo "initialPrefectureId = {$prefecture_term->term_id};\n";
+                echo "initialPrefectureSlug = '{$prefecture_term->slug}';\n";
+                echo "initialPrefectureName = '{$prefecture_term->name}';\n";
+                echo "$('#selected-prefecture-text').text(' > {$prefecture_term->name}');\n";
+            }
+            
+            if ($city_term) {
+                echo "initialCityId = {$city_term->term_id};\n";
+                echo "initialCitySlug = '{$city_term->slug}';\n";
+                echo "initialCityName = '{$city_term->name}';\n";
+                echo "$('#selected-city-text').text(' > {$city_term->name}');\n";
             }
         }
+        ?>
         
-        // 初期値をJavaScriptに設定
-        if ($region_term) {
-            echo "initialRegionId = {$region_term->term_id};\n";
-            echo "initialRegionSlug = '{$region_term->slug}';\n";
-            echo "initialRegionName = '{$region_term->name}';\n";
-            echo "$('#selected-region-text').text('{$region_term->name}');\n";
+        // 初期値を隠しフィールドに設定
+        $('#region-value').val(initialRegionSlug);
+        $('#prefecture-value').val(initialPrefectureSlug);
+        $('#city-value').val(initialCitySlug);
+        
+        // 事業所の情報の都道府県・市区町村を初期化
+        updateLocationDisplay();
+        
+        // 地域（親）セレクトボックスの初期値設定と子ターム読み込み
+        if (initialRegionId) {
+            $('#region-select').val(initialRegionId);
+            loadPrefectures(initialRegionId, initialPrefectureId, initialCityId);
         }
         
-        if ($prefecture_term) {
-            echo "initialPrefectureId = {$prefecture_term->term_id};\n";
-            echo "initialPrefectureSlug = '{$prefecture_term->slug}';\n";
-            echo "initialPrefectureName = '{$prefecture_term->name}';\n";
-            echo "$('#selected-prefecture-text').text(' > {$prefecture_term->name}');\n";
-        }
+        // 地域（親）選択時の処理
+        $('#region-select').on('change', function() {
+            var regionId = $(this).val();
+            var regionText = $(this).find('option:selected').text();
+            var regionSlug = $(this).find('option:selected').data('slug');
+            
+            // 選択表示を更新
+            $('#selected-region-text').text(regionText !== '地域を選択' ? regionText : '');
+            $('#selected-prefecture-text').text('');
+            $('#selected-city-text').text('');
+            
+            // 隠しフィールドを更新
+            $('#region-value').val(regionSlug || '');
+            $('#prefecture-value').val('');
+            $('#city-value').val('');
+            
+            // 都道府県・市区町村セレクトをリセット
+            $('#prefecture-select').html('<option value="">都道府県を選択</option>').prop('disabled', true);
+            $('#city-select').html('<option value="">市区町村を選択</option>').prop('disabled', true);
+            
+            if (regionId) {
+                loadPrefectures(regionId);
+            } else {
+                // 地域が選択されていない場合も住所表示を更新
+                updateLocationDisplay();
+            }
+        });
         
-        if ($city_term) {
-            echo "initialCityId = {$city_term->term_id};\n";
-            echo "initialCitySlug = '{$city_term->slug}';\n";
-            echo "initialCityName = '{$city_term->name}';\n";
-            echo "$('#selected-city-text').text(' > {$city_term->name}');\n";
-        }
-    }
-    ?>
-    
-    // 初期値を隠しフィールドに設定
-    $('#region-value').val(initialRegionSlug);
-    $('#prefecture-value').val(initialPrefectureSlug);
-    $('#city-value').val(initialCitySlug);
-    
-    // 事業所の情報の都道府県・市区町村を初期化
-    updateLocationDisplay();
-    
-    // 地域（親）セレクトボックスの初期値設定と子ターム読み込み
-    if (initialRegionId) {
-        $('#region-select').val(initialRegionId);
-        loadPrefectures(initialRegionId, initialPrefectureId, initialCityId);
-    }
-    
-    // 地域（親）選択時の処理
-    $('#region-select').on('change', function() {
-        var regionId = $(this).val();
-        var regionText = $(this).find('option:selected').text();
-        var regionSlug = $(this).find('option:selected').data('slug');
-        
-        // 選択表示を更新
-        $('#selected-region-text').text(regionText !== '地域を選択' ? regionText : '');
-        $('#selected-prefecture-text').text('');
-        $('#selected-city-text').text('');
-        
-        // 隠しフィールドを更新
-        $('#region-value').val(regionSlug || '');
-        $('#prefecture-value').val('');
-        $('#city-value').val('');
-        
-        // 都道府県・市区町村セレクトをリセット
-        $('#prefecture-select').html('<option value="">都道府県を選択</option>').prop('disabled', true);
-        $('#city-select').html('<option value="">市区町村を選択</option>').prop('disabled', true);
-        
-        if (regionId) {
-            loadPrefectures(regionId);
-        } else {
-            // 地域が選択されていない場合も住所表示を更新
-            updateLocationDisplay();
-        }
-    });
-    
-    // 都道府県を読み込む関数
-    function loadPrefectures(regionId, selectedPrefectureId, selectedCityId) {
-        $('#prefecture-select').prop('disabled', true).html('<option value="">読み込み中...</option>');
-        
-        $.ajax({
-            url: ajaxurl,
-            type: 'POST',
-            dataType: 'json',
-            data: {
-                action: 'get_taxonomy_children',
-                taxonomy: 'job_location',
-                parent_id: regionId,
-                _wpnonce: '<?php echo wp_create_nonce("get_taxonomy_children"); ?>'
-            },
-            success: function(response) {
-                if (response.success && response.data.length > 0) {
-                    var options = '<option value="">都道府県を選択</option>';
-                    $.each(response.data, function(index, term) {
-                        var selected = '';
-                        if (selectedPrefectureId && term.term_id == selectedPrefectureId) {
-                            selected = 'selected';
-                        }
-                        options += '<option value="' + term.term_id + '" data-slug="' + term.slug + '" ' + selected + '>' + term.name + '</option>';
-                    });
-                    $('#prefecture-select').html(options).prop('disabled', false);
-                    
-                    // 都道府県が選択されている場合、市区町村を読み込むか、changeイベントを発火
-                    if (selectedPrefectureId) {
-                        if (selectedCityId) {
-                            loadCities(selectedPrefectureId, selectedCityId);
+        // 都道府県を読み込む関数
+        function loadPrefectures(regionId, selectedPrefectureId, selectedCityId) {
+            $('#prefecture-select').prop('disabled', true).html('<option value="">読み込み中...</option>');
+            
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'get_taxonomy_children',
+                    taxonomy: 'job_location',
+                    parent_id: regionId,
+                    _wpnonce: '<?php echo wp_create_nonce("get_taxonomy_children"); ?>'
+                },
+                success: function(response) {
+                    if (response.success && response.data.length > 0) {
+                        var options = '<option value="">都道府県を選択</option>';
+                        $.each(response.data, function(index, term) {
+                            var selected = '';
+                            if (selectedPrefectureId && term.term_id == selectedPrefectureId) {
+                                selected = 'selected';
+                            }
+                            options += '<option value="' + term.term_id + '" data-slug="' + term.slug + '" ' + selected + '>' + term.name + '</option>';
+                        });
+                        $('#prefecture-select').html(options).prop('disabled', false);
+                        
+                        // 都道府県が選択されている場合、市区町村を読み込むか、changeイベントを発火
+                        if (selectedPrefectureId) {
+                            if (selectedCityId) {
+                                loadCities(selectedPrefectureId, selectedCityId);
+                            } else {
+                                // 選択した都道府県のtextとslugを取得
+                                var $selectedOption = $('#prefecture-select option:selected');
+                                var prefectureText = $selectedOption.text();
+                                var prefectureSlug = $selectedOption.data('slug');
+                                
+                                // 隠しフィールドと表示を更新
+                                $('#prefecture-value').val(prefectureSlug);
+                                $('#selected-prefecture-text').text(' > ' + prefectureText);
+                                
+                                // 住所表示も更新
+                                updateLocationDisplay();
+                            }
                         } else {
-                            // 選択した都道府県のtextとslugを取得
-                            var $selectedOption = $('#prefecture-select option:selected');
-                            var prefectureText = $selectedOption.text();
-                            var prefectureSlug = $selectedOption.data('slug');
-                            
-                            // 隠しフィールドと表示を更新
-                            $('#prefecture-value').val(prefectureSlug);
-                            $('#selected-prefecture-text').text(' > ' + prefectureText);
-                            
-                            // 住所表示も更新
+                            // 選択されていなくても住所表示を更新
                             updateLocationDisplay();
                         }
                     } else {
-                        // 選択されていなくても住所表示を更新
+                        $('#prefecture-select').html('<option value="">都道府県がありません</option>').prop('disabled', true);
                         updateLocationDisplay();
                     }
-                } else {
-                    $('#prefecture-select').html('<option value="">都道府県がありません</option>').prop('disabled', true);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Ajax Error: ' + error);
+                    $('#prefecture-select').html('<option value="">エラーが発生しました</option>').prop('disabled', true);
                     updateLocationDisplay();
                 }
-            },
-            error: function(xhr, status, error) {
-                console.error('Ajax Error: ' + error);
-                $('#prefecture-select').html('<option value="">エラーが発生しました</option>').prop('disabled', true);
+            });
+        }
+        
+        // 都道府県（子）選択時の処理
+        $('#prefecture-select').on('change', function() {
+            var prefectureId = $(this).val();
+            var prefectureText = $(this).find('option:selected').text();
+            var prefectureSlug = $(this).find('option:selected').data('slug');
+            
+            // 選択表示を更新
+            $('#selected-prefecture-text').text(prefectureText !== '都道府県を選択' && prefectureText !== '読み込み中...' && prefectureText !== '都道府県がありません' && prefectureText !== 'エラーが発生しました' ? ' > ' + prefectureText : '');
+            $('#selected-city-text').text('');
+            
+            // 隠しフィールドを更新
+            $('#prefecture-value').val(prefectureSlug || '');
+            $('#city-value').val('');
+            
+            // 市区町村セレクトをリセット
+            $('#city-select').html('<option value="">市区町村を選択</option>').prop('disabled', true);
+            
+            if (prefectureId) {
+                loadCities(prefectureId);
+            } else {
+                // 都道府県が選択されていない場合も住所表示を更新
                 updateLocationDisplay();
             }
         });
-    }
-    
-    // 都道府県（子）選択時の処理
-    $('#prefecture-select').on('change', function() {
-        var prefectureId = $(this).val();
-        var prefectureText = $(this).find('option:selected').text();
-        var prefectureSlug = $(this).find('option:selected').data('slug');
         
-        // 選択表示を更新
-        $('#selected-prefecture-text').text(prefectureText !== '都道府県を選択' && prefectureText !== '読み込み中...' && prefectureText !== '都道府県がありません' && prefectureText !== 'エラーが発生しました' ? ' > ' + prefectureText : '');
-        $('#selected-city-text').text('');
-        
-        // 隠しフィールドを更新
-        $('#prefecture-value').val(prefectureSlug || '');
-        $('#city-value').val('');
-        
-        // 市区町村セレクトをリセット
-        $('#city-select').html('<option value="">市区町村を選択</option>').prop('disabled', true);
-        
-        if (prefectureId) {
-            loadCities(prefectureId);
-        } else {
-            // 都道府県が選択されていない場合も住所表示を更新
-            updateLocationDisplay();
-        }
-    });
-    
-    // 市区町村を読み込む関数
-    function loadCities(prefectureId, selectedCityId) {
-        $('#city-select').prop('disabled', true).html('<option value="">読み込み中...</option>');
-        
-        $.ajax({
-            url: ajaxurl,
-            type: 'POST',
-            dataType: 'json',
-            data: {
-                action: 'get_taxonomy_children',
-                taxonomy: 'job_location',
-                parent_id: prefectureId,
-                _wpnonce: '<?php echo wp_create_nonce("get_taxonomy_children"); ?>'
-            },
-            success: function(response) {
-                if (response.success && response.data.length > 0) {
-                    var options = '<option value="">市区町村を選択</option>';
-                    $.each(response.data, function(index, term) {
-                        var selected = '';
-                        if (selectedCityId && term.term_id == selectedCityId) {
-                            selected = 'selected';
-                        }
-                        options += '<option value="' + term.term_id + '" data-slug="' + term.slug + '" ' + selected + '>' + term.name + '</option>';
-                    });
-                    $('#city-select').html(options).prop('disabled', false);
-                    
-                    // 市区町村が選択されている場合、表示を更新
-                    if (selectedCityId) {
-                        // 選択した市区町村のtextとslugを取得
-                        var $selectedOption = $('#city-select option:selected');
-                        var cityText = $selectedOption.text();
-                        var citySlug = $selectedOption.data('slug');
+        // 市区町村を読み込む関数
+        function loadCities(prefectureId, selectedCityId) {
+            $('#city-select').prop('disabled', true).html('<option value="">読み込み中...</option>');
+            
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'get_taxonomy_children',
+                    taxonomy: 'job_location',
+                    parent_id: prefectureId,
+                    _wpnonce: '<?php echo wp_create_nonce("get_taxonomy_children"); ?>'
+                },
+                success: function(response) {
+                    if (response.success && response.data.length > 0) {
+                        var options = '<option value="">市区町村を選択</option>';
+                        $.each(response.data, function(index, term) {
+                            var selected = '';
+                            if (selectedCityId && term.term_id == selectedCityId) {
+                                selected = 'selected';
+                            }
+                            options += '<option value="' + term.term_id + '" data-slug="' + term.slug + '" ' + selected + '>' + term.name + '</option>';
+                        });
+                        $('#city-select').html(options).prop('disabled', false);
                         
-                        // 隠しフィールドと表示を更新
-                        $('#city-value').val(citySlug);
-                        $('#selected-city-text').text(' > ' + cityText);
+                        // 市区町村が選択されている場合、表示を更新
+                        if (selectedCityId) {
+                            // 選択した市区町村のtextとslugを取得
+                            var $selectedOption = $('#city-select option:selected');
+                            var cityText = $selectedOption.text();
+                            var citySlug = $selectedOption.data('slug');
+                            
+                            // 隠しフィールドと表示を更新
+                            $('#city-value').val(citySlug);
+                            $('#selected-city-text').text(' > ' + cityText);
+                        }
+                        
+                        // 住所表示も更新
+                        updateLocationDisplay();
+                    } else {
+                        $('#city-select').html('<option value="">市区町村がありません</option>').prop('disabled', true);
+                        updateLocationDisplay();
                     }
-                    
-                    // 住所表示も更新
-                    updateLocationDisplay();
-                } else {
-                    $('#city-select').html('<option value="">市区町村がありません</option>').prop('disabled', true);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Ajax Error: ' + error);
+                    $('#city-select').html('<option value="">エラーが発生しました</option>').prop('disabled', true);
                     updateLocationDisplay();
                 }
-            },
-            error: function(xhr, status, error) {
-                console.error('Ajax Error: ' + error);
-                $('#city-select').html('<option value="">エラーが発生しました</option>').prop('disabled', true);
-                updateLocationDisplay();
-            }
-        });
-    }
-    
-    // 市区町村（孫）選択時の処理
-    $('#city-select').on('change', function() {
-        var cityText = $(this).find('option:selected').text();
-        var citySlug = $(this).find('option:selected').data('slug');
+            });
+        }
         
-        // 選択表示を更新
-        $('#selected-city-text').text(cityText !== '市区町村を選択' && cityText !== '読み込み中...' && cityText !== '市区町村がありません' && cityText !== 'エラーが発生しました' ? ' > ' + cityText : '');
-        
-        // 隠しフィールドを更新
-        $('#city-value').val(citySlug || '');
-        
-        // 住所表示も即時更新
-        updateLocationDisplay();
-    });
-    
-    // 勤務地域（都道府県・市区町村）の選択を住所表示に反映
-    function updateLocationDisplay() {
-        // プルダウンから選択された値
-        var prefectureText = $('#prefecture-select option:selected').text();
-        var cityText = $('#city-select option:selected').text();
-        
-        // 無効な値かチェック
-        var invalidValues = ['都道府県を選択', '読み込み中...', '都道府県がありません', 'エラーが発生しました'];
-        var invalidCityValues = ['市区町村を選択', '読み込み中...', '市区町村がありません', 'エラーが発生しました'];
-        
-        if (invalidValues.includes(prefectureText)) {
-            prefectureText = '';
+        // 市区町村（孫）選択時の処理
+        $('#city-select').on('change', function() {
+            var cityText = $(this).find('option:selected').text();
+            var citySlug = $(this).find('option:selected').data('slug');
             
-            // 初期値がある場合は初期値を使用
-            if (initialPrefectureName) {
-                prefectureText = initialPrefectureName;
-            }
-        }
-        
-        if (invalidCityValues.includes(cityText)) {
-            cityText = '';
+            // 選択表示を更新
+            $('#selected-city-text').text(cityText !== '市区町村を選択' && cityText !== '読み込み中...' && cityText !== '市区町村がありません' && cityText !== 'エラーが発生しました' ? ' > ' + cityText : '');
             
-            // 初期値がある場合は初期値を使用
-            if (initialCityName) {
-                cityText = initialCityName;
-            }
-        }
-        
-        var displayText = '';
-        if (prefectureText) {
-            displayText = prefectureText;
-            if (cityText) {
-                displayText += ' ' + cityText;
-            }
-        }
-        
-        // 施設情報の都道府県・市区町村表示を更新
-        if (displayText) {
-            $('#location_display').text(displayText);
-        } else {
-            $('#location_display').html('<span class="location-empty">タクソノミーから選択されます</span>');
-        }
-    }
-    
-    // 特徴タグのアコーディオン機能
-    $('.feature-accordion-header').on('click', function() {
-        var $accordion = $(this).parent();
-        var $content = $accordion.find('.feature-accordion-content');
-        var $icon = $(this).find('.accordion-icon');
-        
-        if ($content.is(':visible')) {
-            $content.slideUp();
-            $icon.text('+');
-        } else {
-            $content.slideDown();
-            $icon.text('-');
-        }
-    });
-    
-    // 既にチェックされている特徴タグがある場合、そのアコーディオンを開く
-    $('.feature-accordion').each(function() {
-        var $accordion = $(this);
-        var hasChecked = $accordion.find('input:checked').length > 0;
-        
-        if (hasChecked) {
-            var $content = $accordion.find('.feature-accordion-content');
-            var $icon = $accordion.find('.accordion-icon');
+            // 隠しフィールドを更新
+            $('#city-value').val(citySlug || '');
             
-            $content.show();
-            $icon.text('-');
-        }
-    });
-    
-    // 仕事の一日の流れの項目を追加
-    $('#add-schedule-item').on('click', function() {
-        var newItem = $('.daily-schedule-item:first').clone();
-        newItem.find('input, textarea').val('');
-        newItem.find('.remove-schedule-item').show();
-        $('#daily-schedule-container').append(newItem);
-    });
-    
-    // 仕事の一日の流れの項目を削除
-    $(document).on('click', '.remove-schedule-item', function() {
-        $(this).closest('.daily-schedule-item').remove();
-    });
-    
-    // 職員の声の項目を追加
-    $('#add-voice-item').on('click', function() {
-        var newItem = $('.staff-voice-item:first').clone();
-        newItem.find('input, textarea').val('');
-        newItem.find('.voice-image-preview').empty();
-        newItem.find('.remove-voice-item').show();
-        $('#staff-voice-container').append(newItem);
-    });
-    
-    // 職員の声の項目を削除
-    $(document).on('click', '.remove-voice-item', function() {
-        $(this).closest('.staff-voice-item').remove();
-    });
-    
-    // 職員の声の画像アップローダー
-    $(document).on('click', '.upload-voice-image', function() {
-        var button = $(this);
-        var imageContainer = button.closest('.voice-image');
-        var previewContainer = imageContainer.find('.voice-image-preview');
-        var inputField = imageContainer.find('input[name^="staff_voice_image"]');
-        
-        var custom_uploader = wp.media({
-            title: '職員の声の画像を選択',
-            button: {
-                text: '画像を選択'
-            },
-            multiple: false
+            // 住所表示も即時更新
+            updateLocationDisplay();
         });
         
-        custom_uploader.on('select', function() {
-            var attachment = custom_uploader.state().get('selection').first().toJSON();
-            previewContainer.html('<img src="' + attachment.url + '" alt="スタッフ画像">');
-            inputField.val(attachment.id);
+        // 勤務地域（都道府県・市区町村）の選択を住所表示に反映
+        function updateLocationDisplay() {
+            // プルダウンから選択された値
+            var prefectureText = $('#prefecture-select option:selected').text();
+            var cityText = $('#city-select option:selected').text();
             
-            // 削除ボタンを表示
-            imageContainer.find('.remove-voice-image').show();
-        });
-        
-        custom_uploader.open();
+            // 無効な値かチェック
+            var invalidValues = ['都道府県を選択', '読み込み中...', '都道府県がありません', 'エラーが発生しました'];
+            var invalidCityValues = ['市区町村を選択', '読み込み中...', '市区町村がありません', 'エラーが発生しました'];
+            
+            if (invalidValues.includes(prefectureText)) {
+                prefectureText = '';
+                
+                // 初期値がある場合は初期値を使用
+                if (initialPrefectureName) {
+                    prefectureText = initialPrefectureName;
+                }
+            }
+            
+            if (invalidCityValues.includes(cityText)) {
+                cityText = '';
+                
+                // 初期値がある場合は初期値を使用
+                if (initialCityName) {
+                    cityText = initialCityName;
+                }
+            }
+            
+            var displayText = '';
+            if (prefectureText) {
+                displayText = prefectureText;
+                if (cityText) {
+                    displayText += ' ' + cityText;
+                }
+            }
+            
+            // 施設情報の都道府県・市区町村表示を更新
+            if (displayText) {
+                $('#location_display').text(displayText);
+            } else {
+                $('#location_display').html('<span class="location-empty">タクソノミーから選択されます</span>');
+            }
+        }
     });
-    
-    // 職員の声の画像削除
-    $(document).on('click', '.remove-voice-image', function() {
-        var imageContainer = $(this).closest('.voice-image');
-        imageContainer.find('.voice-image-preview').empty();
-        imageContainer.find('input[name^="staff_voice_image"]').val('');
-        $(this).hide();
-    });
-});
-</script>
-
-    
+    </script>
     
     <style>
 		/* 複数サムネイルのスタイル */
@@ -1738,17 +1753,54 @@ if ($.fn.sortable) {
         padding: 2px;
     }
     
-    .btn-media-upload,
-    .btn-media-remove,
-    .btn-submit,
-    .btn-cancel,
-    .btn-view,
-    .btn-new,
+    /* ボタンスタイルの修正 */
     .btn-add-item,
     .upload-voice-image,
     .remove-voice-image,
     .remove-schedule-item,
+    .remove-voice-item,
+    .btn-media-upload {
+        display: inline-block;
+        padding: 8px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        font-size: 14px;
+        margin-right: 10px;
+        background-color: #f5f5f5;
+        color: #333;
+        border: 1px solid #ddd;
+        /* 重要: 必ずクリックイベントが反応するようにする */
+        position: relative;
+        z-index: 10;
+    }
+
+    .btn-add-item:hover,
+    .upload-voice-image:hover,
+    .btn-media-upload:hover {
+        background-color: #e0e0e0;
+    }
+
+    /* 削除ボタン */
+    .remove-voice-image,
+    .remove-schedule-item,
     .remove-voice-item {
+        background-color: #ffebee;
+        color: #c62828;
+        border: 1px solid #ffcdd2;
+    }
+
+    .remove-voice-image:hover,
+    .remove-schedule-item:hover,
+    .remove-voice-item:hover {
+        background-color: #ffcdd2;
+    }
+    
+    .btn-media-remove,
+    .btn-submit,
+    .btn-cancel,
+    .btn-view,
+    .btn-new {
         display: inline-block;
         padding: 8px 15px;
         border-radius: 4px;
@@ -1761,10 +1813,7 @@ if ($.fn.sortable) {
         border: 1px solid #ddd;
     }
     
-    .btn-media-remove,
-    .remove-voice-image,
-    .remove-schedule-item,
-    .remove-voice-item {
+    .btn-media-remove {
         background-color: #ffebee;
         color: #c62828;
         border: 1px solid #ffcdd2;
@@ -1851,6 +1900,12 @@ if ($.fn.sortable) {
        right: 10px;
        padding: 5px 10px;
        font-size: 12px;
+   }
+   
+   /* クリアフィックス */
+   .button-container {
+       clear: both;
+       margin-top: 10px;
    }
    
    /* レスポンシブ対応 */
